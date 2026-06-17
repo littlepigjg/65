@@ -1,0 +1,19 @@
+{
+  "lastSyncTime": 1781706008746,
+  "files": {
+    "test1.txt": {
+      "path": "test1.txt",
+      "hash": "e4e1677eaf3a34edffd9f7e5212443e9",
+      "size": 44,
+      "mtime": 1781705912425,
+      "source": "source"
+    },
+    "test2.txt": {
+      "path": "test2.txt",
+      "hash": "fd4ded9c4e6fbdaf845833e406898c3e",
+      "size": 44,
+      "mtime": 1781705912432,
+      "source": "source"
+    }
+  }
+}

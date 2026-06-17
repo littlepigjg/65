@@ -1,0 +1,20 @@
+[
+  {
+    "id": "aac8870c-c258-482d-ae71-41deccbf01f5",
+    "timestamp": 1781705913698,
+    "action": "copy",
+    "filePath": "test2.txt",
+    "source": "target",
+    "status": "success",
+    "message": "Created in source"
+  },
+  {
+    "id": "5a9427e2-4ff7-4b64-a27f-65cb41fca1cc",
+    "timestamp": 1781705913693,
+    "action": "copy",
+    "filePath": "test1.txt",
+    "source": "source",
+    "status": "success",
+    "message": "Created in target"
+  }
+]

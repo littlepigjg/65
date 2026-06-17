@@ -1,0 +1,13 @@
+{
+  "sourceDir": "D:\\code\\65\\server\\sync-source",
+  "targetDir": "D:\\code\\65\\server\\sync-target",
+  "syncInterval": 5000,
+  "ignoredPatterns": [
+    "node_modules",
+    ".git",
+    "*.tmp",
+    "*.log"
+  ],
+  "autoResolve": false,
+  "conflictStrategy": "manual"
+}

@@ -1,0 +1,4 @@
+﻿This is the SOURCE version of conflict file.
+Line 1 from source.
+Line 2 from source.
+Line 3 - source only.

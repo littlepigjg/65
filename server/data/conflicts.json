@@ -1,0 +1,22 @@
+[
+  {
+    "id": "d26d3de2-aae0-455b-9fc0-f6f2b853ffa1",
+    "filePath": "conflict-test.txt",
+    "sourceVersion": {
+      "path": "conflict-test.txt",
+      "hash": "3131653f2951e6b828fd4bc18fb73df9",
+      "size": 111,
+      "mtime": 1781706004210,
+      "source": "source"
+    },
+    "targetVersion": {
+      "path": "conflict-test.txt",
+      "hash": "105ef14c8d30605609d0e1c5eb9f6b93",
+      "size": 111,
+      "mtime": 1781706004263,
+      "source": "target"
+    },
+    "detectedAt": 1781706008745,
+    "resolved": false
+  }
+]
