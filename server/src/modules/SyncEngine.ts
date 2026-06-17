@@ -120,14 +120,20 @@ export class SyncEngine extends EventEmitter {
     const sourceFiles = await this.scanDirectory(config.sourceDir, 'source', config.ignoredPatterns);
     const targetFiles = await this.scanDirectory(config.targetDir, 'target', config.ignoredPatterns);
 
-    const conflicts = ConflictDetector.detectConflicts(sourceFiles, targetFiles, syncState);
-    if (conflicts.length > 0) {
-      await ConflictDetector.saveConflicts(conflicts);
-      console.log(`[SyncEngine] Detected ${conflicts.length} conflicts`);
-      conflicts.forEach(c => this.emit('conflict', c));
+    const newConflicts = ConflictDetector.detectConflicts(sourceFiles, targetFiles, syncState);
+    if (newConflicts.length > 0) {
+      await ConflictDetector.saveConflicts(newConflicts);
+      console.log(`[SyncEngine] Detected ${newConflicts.length} new conflicts`);
+      newConflicts.forEach(c => this.emit('conflict', c));
     }
 
-    const conflictPaths = new Set(conflicts.map(c => c.filePath));
+    const existingConflictPaths = await ConflictDetector.getAllConflictPaths();
+    const newConflictPaths = new Set(newConflicts.map(c => c.filePath));
+    const conflictPaths = new Set([...existingConflictPaths, ...newConflictPaths]);
+
+    if (existingConflictPaths.size > 0) {
+      console.log(`[SyncEngine] Skipping ${existingConflictPaths.size} existing unresolved conflicts`);
+    }
 
     const sourceFileMap = new Map(sourceFiles.map(f => [f.path, f]));
     const targetFileMap = new Map(targetFiles.map(f => [f.path, f]));
@@ -301,27 +307,51 @@ export class SyncEngine extends EventEmitter {
     };
 
     try {
-      fileWatcher.addSilentPathBoth(conflict.filePath, 5);
+      this.clearPendingChangesForPath(conflict.filePath);
 
-      let finalState: FileState | undefined;
+      fileWatcher.addSilentPathBoth(conflict.filePath, 10);
+
+      let finalSourceState: FileState | undefined;
+      let finalTargetState: FileState | undefined;
 
       if (resolution === 'source') {
         await FileSyncer.copyFromSourceToTarget(conflict.filePath, config);
-        finalState = await getFileState(sourcePath, config.sourceDir, 'source') ?? undefined;
+        finalSourceState = await getFileState(sourcePath, config.sourceDir, 'source') ?? undefined;
+        finalTargetState = await getFileState(targetPath, config.targetDir, 'target') ?? undefined;
       } else if (resolution === 'target') {
         await FileSyncer.copyFromTargetToSource(conflict.filePath, config);
-        finalState = await getFileState(targetPath, config.targetDir, 'target') ?? undefined;
+        finalSourceState = await getFileState(sourcePath, config.sourceDir, 'source') ?? undefined;
+        finalTargetState = await getFileState(targetPath, config.targetDir, 'target') ?? undefined;
       } else if (resolution === 'merge' && mergedContent !== undefined) {
         const result = await FileSyncer.writeToBothSides(conflict.filePath, mergedContent, config);
-        finalState = result.sourceState;
+        finalSourceState = result.sourceState;
+        finalTargetState = result.targetState;
         record.message = 'Resolved conflict by manual merge';
+      }
+
+      if (finalSourceState && finalTargetState && finalSourceState.hash !== finalTargetState.hash) {
+        console.warn(`[SyncEngine] Hash mismatch after conflict resolution for ${conflict.filePath}: source=${finalSourceState.hash}, target=${finalTargetState.hash}`);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        finalSourceState = await getFileState(sourcePath, config.sourceDir, 'source') ?? undefined;
+        finalTargetState = await getFileState(targetPath, config.targetDir, 'target') ?? undefined;
       }
 
       await resolveConflictStorage(conflictId, resolution, mergedContent);
 
-      if (finalState) {
-        await syncStateManager.setFileState(conflict.filePath, finalState);
+      const updates: FileState[] = [];
+      if (finalSourceState) {
+        updates.push(finalSourceState);
       }
+      if (finalTargetState) {
+        updates.push(finalTargetState);
+      }
+      if (updates.length > 0) {
+        await syncStateManager.setFileStates(updates);
+      }
+
+      syncStateManager.invalidateCache();
+
+      this.clearPendingChangesForPath(conflict.filePath);
 
       record.status = 'success';
       await addSyncRecord(record);
@@ -330,12 +360,24 @@ export class SyncEngine extends EventEmitter {
       this.emit('statusChange', await this.getStatus());
 
       console.log(`[SyncEngine] Conflict resolved: ${conflict.filePath} (${resolution})`);
+      if (finalSourceState) {
+        console.log(`[SyncEngine] Updated sync state: hash=${finalSourceState.hash}`);
+      }
     } catch (error: any) {
       record.status = 'failed';
       record.message = error.message;
       await addSyncRecord(record);
       console.error(`[SyncEngine] Failed to resolve conflict:`, error);
       throw error;
+    }
+  }
+
+  private clearPendingChangesForPath(filePath: string): void {
+    const beforeCount = this.pendingChanges.length;
+    this.pendingChanges = this.pendingChanges.filter(c => c.path !== filePath);
+    const removed = beforeCount - this.pendingChanges.length;
+    if (removed > 0) {
+      console.log(`[SyncEngine] Cleared ${removed} pending changes for ${filePath}`);
     }
   }
 

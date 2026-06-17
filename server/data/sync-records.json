@@ -1,56 +1,11 @@
 [
   {
-    "id": "0df7d4ce-fede-4146-a3f6-bc116d96d0d8",
-    "timestamp": 1781710191712,
-    "action": "copy",
-    "filePath": "only-target.txt",
-    "source": "target",
-    "status": "success",
-    "message": "New file in target - copy to source"
-  },
-  {
-    "id": "43e8af52-2840-4439-876a-3c5d3abdab9f",
-    "timestamp": 1781710191692,
-    "action": "copy",
-    "filePath": "only-source.txt",
-    "source": "source",
-    "status": "success",
-    "message": "New file in source - copy to target"
-  },
-  {
-    "id": "4168002a-5365-4e28-85a1-03db4982ed9f",
-    "timestamp": 1781709356077,
+    "id": "3c0dc48f-d3fe-4771-b06f-f892b6152b1a",
+    "timestamp": 1781713462030,
     "action": "conflict",
-    "filePath": "test-conflict.txt",
+    "filePath": "conflict-1.txt",
     "source": "source",
     "status": "success",
     "message": "Resolved conflict by choosing source version"
-  },
-  {
-    "id": "rsv-5e722uxf",
-    "timestamp": 1781707959325,
-    "action": "conflict",
-    "filePath": "conflict-test.txt",
-    "source": "source",
-    "status": "success",
-    "message": "冲突已解决：保留源目录版本"
-  },
-  {
-    "id": "aac8870c-c258-482d-ae71-41deccbf01f5",
-    "timestamp": 1781705913698,
-    "action": "copy",
-    "filePath": "test2.txt",
-    "source": "target",
-    "status": "success",
-    "message": "Created in source"
-  },
-  {
-    "id": "5a9427e2-4ff7-4b64-a27f-65cb41fca1cc",
-    "timestamp": 1781705913693,
-    "action": "copy",
-    "filePath": "test1.txt",
-    "source": "source",
-    "status": "success",
-    "message": "Created in target"
   }
 ]

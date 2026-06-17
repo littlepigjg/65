@@ -73,9 +73,14 @@ export class ConflictDetector {
     return conflicts.filter(c => !c.resolved);
   }
 
-  static async isPathInConflict(filePath: string): Promise<boolean> {
+  static async getAllConflictPaths(): Promise<Set<string>> {
     const conflicts = await this.getUnresolvedConflicts();
-    return conflicts.some(c => c.filePath === filePath);
+    return new Set(conflicts.map(c => c.filePath));
+  }
+
+  static async isPathInConflict(filePath: string): Promise<boolean> {
+    const paths = await this.getAllConflictPaths();
+    return paths.has(filePath);
   }
 
   static async getConflictById(conflictId: string): Promise<ConflictFile | undefined> {

@@ -1,0 +1,3 @@
+﻿CONFLICT 2 - TARGET
+Target-only line
+Common

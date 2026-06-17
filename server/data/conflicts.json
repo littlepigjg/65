@@ -1,62 +1,124 @@
 [
   {
-    "id": "77dda178-1afb-4a06-9c38-bb3e8fde5dbb",
-    "filePath": "different-file.txt",
+    "id": "9b0c1699-0501-47d8-ae27-867c72a9af09",
+    "filePath": "conflict-1.txt",
     "sourceVersion": {
-      "path": "different-file.txt",
-      "hash": "78a4838145bce1d11ab054aab3a31803",
-      "size": 108,
-      "mtime": 1781710071326,
+      "path": "conflict-1.txt",
+      "hash": "e18f809ac106b3a868c1482ef046a98d",
+      "size": 46,
+      "mtime": 1781713313127,
       "source": "source"
     },
     "targetVersion": {
-      "path": "different-file.txt",
-      "hash": "69654191af1b15388d492b3cdc0af262",
-      "size": 108,
-      "mtime": 1781710071337,
+      "path": "conflict-1.txt",
+      "hash": "8eaecf6e2afb74b9c301fc812204eb59",
+      "size": 46,
+      "mtime": 1781713313128,
       "source": "target"
     },
-    "detectedAt": 1781710354823,
+    "detectedAt": 1781713395058,
+    "resolved": true,
+    "resolution": "source",
+    "resolvedAt": 1781713462035
+  },
+  {
+    "id": "bac85534-bd39-4c8d-a3bb-3ebd2c7fac83",
+    "filePath": "conflict-2.txt",
+    "sourceVersion": {
+      "path": "conflict-2.txt",
+      "hash": "2854fecb1995f47a2e83b64f74f3477d",
+      "size": 46,
+      "mtime": 1781713313128,
+      "source": "source"
+    },
+    "targetVersion": {
+      "path": "conflict-2.txt",
+      "hash": "417ebf18467651322725076a67a488da",
+      "size": 46,
+      "mtime": 1781713313129,
+      "source": "target"
+    },
+    "detectedAt": 1781713620046,
     "resolved": false
   },
   {
-    "id": "b3dd67f7-8dd5-4719-a46c-d9770586bdcd",
-    "filePath": "only-source.txt",
+    "id": "dd7e0e98-ec02-4b26-8af6-68b36e1635b5",
+    "filePath": "source-only-1.txt",
     "sourceVersion": {
-      "path": "only-source.txt",
-      "hash": "0890aeeee5b3889e4ed2d2fe37c5c853",
-      "size": 19,
-      "mtime": 1781710071345,
+      "path": "source-only-1.txt",
+      "hash": "d019eda103f803662d151f180c15ffc9",
+      "size": 16,
+      "mtime": 1781713313129,
       "source": "source"
     },
     "targetVersion": {
-      "path": "only-source.txt",
+      "path": "source-only-1.txt",
       "hash": "",
       "size": 0,
       "mtime": 0,
       "source": "target"
     },
-    "detectedAt": 1781710354823,
+    "detectedAt": 1781713620046,
     "resolved": false
   },
   {
-    "id": "691c090b-4546-46e1-b104-2cc9f649a9c6",
-    "filePath": "only-target.txt",
+    "id": "88d28af3-a081-4f35-a07f-5c281fdd6839",
+    "filePath": "source-only-2.txt",
     "sourceVersion": {
-      "path": "only-target.txt",
+      "path": "source-only-2.txt",
+      "hash": "e3b8529cab6145116df32d8f0dda8773",
+      "size": 16,
+      "mtime": 1781713313130,
+      "source": "source"
+    },
+    "targetVersion": {
+      "path": "source-only-2.txt",
+      "hash": "",
+      "size": 0,
+      "mtime": 0,
+      "source": "target"
+    },
+    "detectedAt": 1781713620046,
+    "resolved": false
+  },
+  {
+    "id": "5e20693a-0f93-4ec0-9e4a-84b7e92b80f2",
+    "filePath": "target-only-1.txt",
+    "sourceVersion": {
+      "path": "target-only-1.txt",
       "hash": "",
       "size": 0,
       "mtime": 0,
       "source": "source"
     },
     "targetVersion": {
-      "path": "only-target.txt",
-      "hash": "0bfa253e8ce1d46ffd153f6b754279a0",
-      "size": 19,
-      "mtime": 1781710071353,
+      "path": "target-only-1.txt",
+      "hash": "73012530215d8c553cb69834e1feca9b",
+      "size": 16,
+      "mtime": 1781713313131,
       "source": "target"
     },
-    "detectedAt": 1781710354823,
+    "detectedAt": 1781713620046,
+    "resolved": false
+  },
+  {
+    "id": "86da5925-fef4-4bc4-9c21-7a826df2ed10",
+    "filePath": "target-only-2.txt",
+    "sourceVersion": {
+      "path": "target-only-2.txt",
+      "hash": "",
+      "size": 0,
+      "mtime": 0,
+      "source": "source"
+    },
+    "targetVersion": {
+      "path": "target-only-2.txt",
+      "hash": "2936a18f938e371d154d78d74bf3b3df",
+      "size": 16,
+      "mtime": 1781713313131,
+      "source": "target"
+    },
+    "detectedAt": 1781713620046,
     "resolved": false
   }
 ]

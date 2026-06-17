@@ -1,32 +1,32 @@
 {
-  "lastSyncTime": 1781710354835,
+  "lastSyncTime": 1781713620051,
   "files": {
-    "conflict-test.txt": {
-      "path": "conflict-test.txt",
-      "hash": "3131653f2951e6b828fd4bc18fb73df9",
-      "size": 111,
-      "mtime": 1781706004210,
+    "conflict-1.txt": {
+      "path": "conflict-1.txt",
+      "hash": "e18f809ac106b3a868c1482ef046a98d",
+      "size": 46,
+      "mtime": 1781713313127,
       "source": "source"
     },
-    "test-conflict.txt": {
-      "path": "test-conflict.txt",
-      "hash": "2421f6dec5c536e19ada8d57481980b4",
-      "size": 70,
-      "mtime": 1781709292585,
+    "identical-1.txt": {
+      "path": "identical-1.txt",
+      "hash": "ec7cdfd89c975d35e5da466a37e383de",
+      "size": 33,
+      "mtime": 1781713313121,
       "source": "source"
     },
-    "test1.txt": {
-      "path": "test1.txt",
-      "hash": "e4e1677eaf3a34edffd9f7e5212443e9",
-      "size": 44,
-      "mtime": 1781705912425,
+    "identical-2.txt": {
+      "path": "identical-2.txt",
+      "hash": "933a9995b8470d41d6e579c60759c9b3",
+      "size": 33,
+      "mtime": 1781713313123,
       "source": "source"
     },
-    "test2.txt": {
-      "path": "test2.txt",
-      "hash": "fd4ded9c4e6fbdaf845833e406898c3e",
-      "size": 44,
-      "mtime": 1781705912432,
+    "identical-3.txt": {
+      "path": "identical-3.txt",
+      "hash": "0b70ed569c4ae23034d34fae8879ec52",
+      "size": 33,
+      "mtime": 1781713313124,
       "source": "source"
     }
   }

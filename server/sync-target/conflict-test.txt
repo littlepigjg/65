@@ -1,4 +1,0 @@
-﻿This is the TARGET version of conflict file.
-Line 1 from target.
-Line 2 from target.
-Line 3 - target only.

@@ -1,0 +1,3 @@
+﻿CONFLICT 2 - SOURCE
+Source-only line
+Common

@@ -54,8 +54,8 @@ export class SyncStateManager {
   }
 
   async hasState(): Promise<boolean> {
-    const state = await this.getState();
-    return Object.keys(state.files).length > 0 || state.lastSyncTime > 0;
+    const diskState = await getSyncState();
+    return Object.keys(diskState.files).length > 0 || diskState.lastSyncTime > 0;
   }
 
   async clear(): Promise<void> {

@@ -1,4 +1,0 @@
-﻿DIFFERENT - Target only line X
-DIFFERENT - Target only line Y
-COMMON - Same line 1
-COMMON - Same line 2
