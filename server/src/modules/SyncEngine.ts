@@ -2,10 +2,13 @@ import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { EventEmitter } from 'events';
 import { FileState, SyncRecord, SyncStatus, SyncConfig } from '../types';
-import { getConfig, getSyncState, saveSyncState, addSyncRecord, resolveConflict as resolveConflictStorage } from '../utils/storage';
-import { getFileState, walkDirectory, isIgnored, copyFileWithDirs, deleteFileIfExists, readTextFile, writeTextFile } from '../utils/file';
+import { getConfig, addSyncRecord, resolveConflict as resolveConflictStorage, getSyncRecords } from '../utils/storage';
+import { getFileState, walkDirectory, isIgnored, readTextFile } from '../utils/file';
 import { ConflictDetector } from './ConflictDetector';
 import { FileWatcher, FileChangeEvent, fileWatcher } from './FileWatcher';
+import { syncStateManager } from './SyncStateManager';
+import { FileSyncer } from './FileSyncer';
+import { StateRecovery } from './StateRecovery';
 
 export class SyncEngine extends EventEmitter {
   private isRunning = false;
@@ -31,7 +34,7 @@ export class SyncEngine extends EventEmitter {
       }
     }, config.syncInterval);
 
-    await this.fullSync();
+    await this.initialSync();
 
     console.log('[SyncEngine] Started');
     this.emit('statusChange', await this.getStatus());
@@ -52,11 +55,67 @@ export class SyncEngine extends EventEmitter {
     this.emit('statusChange', await this.getStatus());
   }
 
+  private async initialSync(): Promise<void> {
+    const hasState = await syncStateManager.hasState();
+
+    if (hasState) {
+      console.log('[SyncEngine] Existing state found, performing full sync...');
+      await this.fullSync();
+    } else {
+      console.log('[SyncEngine] No existing state found, performing SAFE RECOVERY...');
+      await this.safeRecoverySync();
+    }
+  }
+
+  private async safeRecoverySync(): Promise<void> {
+    const config = await getConfig();
+
+    const recovery = await StateRecovery.performSafeRecovery(config, {
+      autoResolveSameFiles: true,
+      flagDifferencesAsConflicts: true
+    });
+
+    const { sourceFiles, targetFiles, identicalCount, onlyInSource, onlyInTarget, differentFiles } = recovery;
+
+    console.log(`[SyncEngine] Safe recovery complete:
+      - Identical files: ${identicalCount} (will be tracked)
+      - Only in source: ${onlyInSource.length} (flagged for review)
+      - Only in target: ${onlyInTarget.length} (flagged for review)
+      - Different content: ${differentFiles.length} (flagged as conflicts)`);
+
+    const trackedFiles: FileState[] = [];
+
+    for (const file of sourceFiles) {
+      const targetFile = targetFiles.find(f => f.path === file.path);
+      if (targetFile && targetFile.hash === file.hash) {
+        trackedFiles.push(file);
+      }
+    }
+
+    if (trackedFiles.length > 0) {
+      await syncStateManager.setFileStates(trackedFiles);
+    }
+
+    await syncStateManager.updateLastSyncTime(Date.now());
+
+    if (recovery.conflicts.length > 0) {
+      recovery.conflicts.forEach(c => this.emit('conflict', c));
+    }
+
+    this.emit('safeRecoveryComplete', {
+      identicalCount,
+      onlyInSource: onlyInSource.length,
+      onlyInTarget: onlyInTarget.length,
+      differentFiles: differentFiles.length,
+      conflicts: recovery.conflicts.length
+    });
+  }
+
   async fullSync(): Promise<void> {
     console.log('[SyncEngine] Starting full sync...');
 
     const config = await getConfig();
-    const syncState = await getSyncState();
+    const syncState = await syncStateManager.getState();
 
     const sourceFiles = await this.scanDirectory(config.sourceDir, 'source', config.ignoredPatterns);
     const targetFiles = await this.scanDirectory(config.targetDir, 'target', config.ignoredPatterns);
@@ -74,6 +133,11 @@ export class SyncEngine extends EventEmitter {
     const targetFileMap = new Map(targetFiles.map(f => [f.path, f]));
     const allPaths = new Set([...sourceFileMap.keys(), ...targetFileMap.keys(), ...Object.keys(syncState.files)]);
 
+    const stateUpdates: {
+      addOrUpdate: FileState[];
+      delete: string[];
+    } = { addOrUpdate: [], delete: [] };
+
     for (const filePath of allPaths) {
       if (conflictPaths.has(filePath)) continue;
 
@@ -81,16 +145,40 @@ export class SyncEngine extends EventEmitter {
       const targetFile = targetFileMap.get(filePath);
       const lastState = syncState.files[filePath];
 
-      await this.syncFile(filePath, sourceFile, targetFile, lastState, config);
-    }
+      const result = await FileSyncer.executeSync(
+        filePath,
+        sourceFile,
+        targetFile,
+        lastState,
+        config
+      );
 
-    syncState.lastSyncTime = Date.now();
-    for (const file of [...sourceFiles, ...targetFiles]) {
-      if (!conflictPaths.has(file.path)) {
-        syncState.files[file.path] = file;
+      if (result.success && result.action !== 'none') {
+        if (result.sourceState) {
+          stateUpdates.addOrUpdate.push(result.sourceState);
+        }
+        if (result.targetState) {
+          stateUpdates.addOrUpdate.push(result.targetState);
+        }
+        if (result.action === 'delete' && !sourceFile && !targetFile) {
+          stateUpdates.delete.push(filePath);
+        }
       }
     }
-    await saveSyncState(syncState);
+
+    for (const file of [...sourceFiles, ...targetFiles]) {
+      if (!conflictPaths.has(file.path)) {
+        if (!stateUpdates.addOrUpdate.find(f => f.path === file.path)) {
+          stateUpdates.addOrUpdate.push(file);
+        }
+      }
+    }
+
+    await syncStateManager.bulkUpdate({
+      addOrUpdate: stateUpdates.addOrUpdate,
+      delete: stateUpdates.delete,
+      lastSyncTime: Date.now()
+    });
 
     console.log('[SyncEngine] Full sync completed');
     this.emit('syncComplete');
@@ -106,10 +194,15 @@ export class SyncEngine extends EventEmitter {
     console.log(`[SyncEngine] Processing ${changes.length} changes...`);
 
     const config = await getConfig();
-    const syncState = await getSyncState();
-    const conflictPaths = new Set(await ConflictDetector.getUnresolvedConflicts().then(c => c.map(f => f.filePath)));
+    const syncState = await syncStateManager.getState();
+    const unresolvedConflicts = await ConflictDetector.getUnresolvedConflicts();
+    const conflictPaths = new Set(unresolvedConflicts.map(f => f.filePath));
 
     const processedPaths = new Set<string>();
+    const stateUpdates: {
+      addOrUpdate: FileState[];
+      delete: string[];
+    } = { addOrUpdate: [], delete: [] };
 
     for (const change of changes) {
       if (conflictPaths.has(change.path)) continue;
@@ -123,31 +216,48 @@ export class SyncEngine extends EventEmitter {
       const targetFile = await getFileState(targetFilePath, config.targetDir, 'target');
       const lastState = syncState.files[change.path];
 
-      const conflict = ConflictDetector.detectConflicts(
+      const newConflicts = ConflictDetector.detectConflicts(
         sourceFile ? [sourceFile] : [],
         targetFile ? [targetFile] : [],
         syncState
       );
 
-      if (conflict.length > 0) {
-        await ConflictDetector.saveConflicts(conflict);
-        conflict.forEach(c => this.emit('conflict', c));
+      if (newConflicts.length > 0) {
+        await ConflictDetector.saveConflicts(newConflicts);
+        newConflicts.forEach(c => this.emit('conflict', c));
         continue;
       }
 
-      await this.syncFile(change.path, sourceFile ?? undefined, targetFile ?? undefined, lastState, config);
+      const result = await FileSyncer.executeSync(
+        change.path,
+        sourceFile ?? undefined,
+        targetFile ?? undefined,
+        lastState,
+        config
+      );
 
-      if (sourceFile && !conflictPaths.has(change.path)) {
-        syncState.files[change.path] = sourceFile;
-      } else if (targetFile && !conflictPaths.has(change.path)) {
-        syncState.files[change.path] = targetFile;
-      } else if (!sourceFile && !targetFile) {
-        delete syncState.files[change.path];
+      if (result.success) {
+        if (result.sourceState) {
+          stateUpdates.addOrUpdate.push(result.sourceState);
+        }
+        if (result.targetState) {
+          stateUpdates.addOrUpdate.push(result.targetState);
+        }
+        if (result.action === 'delete' && !sourceFile && !targetFile) {
+          stateUpdates.delete.push(change.path);
+        }
       }
     }
 
-    syncState.lastSyncTime = Date.now();
-    await saveSyncState(syncState);
+    if (stateUpdates.addOrUpdate.length > 0 || stateUpdates.delete.length > 0) {
+      await syncStateManager.bulkUpdate({
+        addOrUpdate: stateUpdates.addOrUpdate,
+        delete: stateUpdates.delete,
+        lastSyncTime: Date.now()
+      });
+    } else {
+      await syncStateManager.updateLastSyncTime(Date.now());
+    }
 
     console.log('[SyncEngine] Sync completed');
     this.emit('syncComplete');
@@ -168,107 +278,6 @@ export class SyncEngine extends EventEmitter {
     }
 
     return fileStates;
-  }
-
-  private async syncFile(
-    relativePath: string,
-    sourceFile: FileState | undefined,
-    targetFile: FileState | undefined,
-    lastState: FileState | undefined,
-    config: SyncConfig
-  ): Promise<void> {
-    const sourcePath = path.join(config.sourceDir, relativePath);
-    const targetPath = path.join(config.targetDir, relativePath);
-
-    const record: SyncRecord = {
-      id: uuidv4(),
-      timestamp: Date.now(),
-      action: 'copy',
-      filePath: relativePath,
-      source: 'source',
-      status: 'pending'
-    };
-
-    try {
-      if (sourceFile && targetFile) {
-        if (sourceFile.hash === targetFile.hash) {
-          return;
-        }
-
-        if (lastState) {
-          const sourceChanged = sourceFile.hash !== lastState.hash;
-          const targetChanged = targetFile.hash !== lastState.hash;
-
-          if (sourceChanged && !targetChanged) {
-            record.action = 'update';
-            record.source = 'source';
-            await copyFileWithDirs(sourcePath, targetPath);
-            record.status = 'success';
-            record.message = 'Synced from source to target';
-          } else if (targetChanged && !sourceChanged) {
-            record.action = 'update';
-            record.source = 'target';
-            await copyFileWithDirs(targetPath, sourcePath);
-            record.status = 'success';
-            record.message = 'Synced from target to source';
-          }
-        } else {
-          if (sourceFile.mtime >= targetFile.mtime) {
-            record.action = 'copy';
-            record.source = 'source';
-            await copyFileWithDirs(sourcePath, targetPath);
-            record.status = 'success';
-            record.message = 'Copied from source to target';
-          } else {
-            record.action = 'copy';
-            record.source = 'target';
-            await copyFileWithDirs(targetPath, sourcePath);
-            record.status = 'success';
-            record.message = 'Copied from target to source';
-          }
-        }
-      } else if (sourceFile && !targetFile) {
-        if (!lastState || lastState.source !== 'source' || lastState.hash !== sourceFile.hash) {
-          record.action = 'copy';
-          record.source = 'source';
-          await copyFileWithDirs(sourcePath, targetPath);
-          record.status = 'success';
-          record.message = 'Created in target';
-        } else {
-          record.action = 'delete';
-          record.source = 'target';
-          await deleteFileIfExists(sourcePath);
-          record.status = 'success';
-          record.message = 'Deleted from source (matched deletion in target)';
-        }
-      } else if (!sourceFile && targetFile) {
-        if (!lastState || lastState.source !== 'target' || lastState.hash !== targetFile.hash) {
-          record.action = 'copy';
-          record.source = 'target';
-          await copyFileWithDirs(targetPath, sourcePath);
-          record.status = 'success';
-          record.message = 'Created in source';
-        } else {
-          record.action = 'delete';
-          record.source = 'source';
-          await deleteFileIfExists(targetPath);
-          record.status = 'success';
-          record.message = 'Deleted from target (matched deletion in source)';
-        }
-      } else if (!sourceFile && !targetFile && lastState) {
-        record.action = 'delete';
-        record.source = lastState.source;
-        record.status = 'success';
-        record.message = 'Deleted from both directories';
-      }
-
-      await addSyncRecord(record);
-    } catch (error: any) {
-      record.status = 'failed';
-      record.message = error.message;
-      await addSyncRecord(record);
-      console.error(`[SyncEngine] Failed to sync ${relativePath}:`, error);
-    }
   }
 
   async resolveConflict(conflictId: string, resolution: 'source' | 'target' | 'merge', mergedContent?: string): Promise<void> {
@@ -292,23 +301,26 @@ export class SyncEngine extends EventEmitter {
     };
 
     try {
+      fileWatcher.addSilentPathBoth(conflict.filePath, 5);
+
+      let finalState: FileState | undefined;
+
       if (resolution === 'source') {
-        await copyFileWithDirs(sourcePath, targetPath);
+        await FileSyncer.copyFromSourceToTarget(conflict.filePath, config);
+        finalState = await getFileState(sourcePath, config.sourceDir, 'source') ?? undefined;
       } else if (resolution === 'target') {
-        await copyFileWithDirs(targetPath, sourcePath);
+        await FileSyncer.copyFromTargetToSource(conflict.filePath, config);
+        finalState = await getFileState(targetPath, config.targetDir, 'target') ?? undefined;
       } else if (resolution === 'merge' && mergedContent !== undefined) {
-        await writeTextFile(sourcePath, mergedContent);
-        await writeTextFile(targetPath, mergedContent);
+        const result = await FileSyncer.writeToBothSides(conflict.filePath, mergedContent, config);
+        finalState = result.sourceState;
         record.message = 'Resolved conflict by manual merge';
       }
 
       await resolveConflictStorage(conflictId, resolution, mergedContent);
 
-      const syncState = await getSyncState();
-      const updatedSourceState = await getFileState(sourcePath, config.sourceDir, 'source');
-      if (updatedSourceState) {
-        syncState.files[conflict.filePath] = updatedSourceState;
-        await saveSyncState(syncState);
+      if (finalState) {
+        await syncStateManager.setFileState(conflict.filePath, finalState);
       }
 
       record.status = 'success';
@@ -329,22 +341,19 @@ export class SyncEngine extends EventEmitter {
 
   async getStatus(): Promise<SyncStatus> {
     const config = await getConfig();
-    const syncState = await getSyncState();
-    const records = await getSyncState().then(async () => {
-      const { getSyncRecords } = await import('../utils/storage');
-      return getSyncRecords();
-    });
+    const state = await syncStateManager.getState();
+    const records = await getSyncRecords();
     const conflicts = await ConflictDetector.getUnresolvedConflicts();
 
     return {
       isRunning: this.isRunning,
       sourceDir: config.sourceDir,
       targetDir: config.targetDir,
-      lastSyncTime: syncState.lastSyncTime,
+      lastSyncTime: state.lastSyncTime,
       pendingSyncCount: this.pendingChanges.length,
       conflictCount: conflicts.length,
-      totalFiles: Object.keys(syncState.files).length,
-      recentRecords: (await records).slice(0, 10)
+      totalFiles: Object.keys(state.files).length,
+      recentRecords: records.slice(0, 10)
     };
   }
 
@@ -352,6 +361,14 @@ export class SyncEngine extends EventEmitter {
     const config = await getConfig();
     const fullPath = path.join(version === 'source' ? config.sourceDir : config.targetDir, filePath);
     return readTextFile(fullPath);
+  }
+
+  getPendingChangesCount(): number {
+    return this.pendingChanges.length;
+  }
+
+  clearPendingChanges(): void {
+    this.pendingChanges = [];
   }
 }
 

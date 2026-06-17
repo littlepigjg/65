@@ -1,22 +1,62 @@
 [
   {
-    "id": "d26d3de2-aae0-455b-9fc0-f6f2b853ffa1",
-    "filePath": "conflict-test.txt",
+    "id": "77dda178-1afb-4a06-9c38-bb3e8fde5dbb",
+    "filePath": "different-file.txt",
     "sourceVersion": {
-      "path": "conflict-test.txt",
-      "hash": "3131653f2951e6b828fd4bc18fb73df9",
-      "size": 111,
-      "mtime": 1781706004210,
+      "path": "different-file.txt",
+      "hash": "78a4838145bce1d11ab054aab3a31803",
+      "size": 108,
+      "mtime": 1781710071326,
       "source": "source"
     },
     "targetVersion": {
-      "path": "conflict-test.txt",
-      "hash": "105ef14c8d30605609d0e1c5eb9f6b93",
-      "size": 111,
-      "mtime": 1781706004263,
+      "path": "different-file.txt",
+      "hash": "69654191af1b15388d492b3cdc0af262",
+      "size": 108,
+      "mtime": 1781710071337,
       "source": "target"
     },
-    "detectedAt": 1781706008745,
+    "detectedAt": 1781710354823,
+    "resolved": false
+  },
+  {
+    "id": "b3dd67f7-8dd5-4719-a46c-d9770586bdcd",
+    "filePath": "only-source.txt",
+    "sourceVersion": {
+      "path": "only-source.txt",
+      "hash": "0890aeeee5b3889e4ed2d2fe37c5c853",
+      "size": 19,
+      "mtime": 1781710071345,
+      "source": "source"
+    },
+    "targetVersion": {
+      "path": "only-source.txt",
+      "hash": "",
+      "size": 0,
+      "mtime": 0,
+      "source": "target"
+    },
+    "detectedAt": 1781710354823,
+    "resolved": false
+  },
+  {
+    "id": "691c090b-4546-46e1-b104-2cc9f649a9c6",
+    "filePath": "only-target.txt",
+    "sourceVersion": {
+      "path": "only-target.txt",
+      "hash": "",
+      "size": 0,
+      "mtime": 0,
+      "source": "source"
+    },
+    "targetVersion": {
+      "path": "only-target.txt",
+      "hash": "0bfa253e8ce1d46ffd153f6b754279a0",
+      "size": 19,
+      "mtime": 1781710071353,
+      "source": "target"
+    },
+    "detectedAt": 1781710354823,
     "resolved": false
   }
 ]

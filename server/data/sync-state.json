@@ -1,6 +1,20 @@
 {
-  "lastSyncTime": 1781706008746,
+  "lastSyncTime": 1781710354835,
   "files": {
+    "conflict-test.txt": {
+      "path": "conflict-test.txt",
+      "hash": "3131653f2951e6b828fd4bc18fb73df9",
+      "size": 111,
+      "mtime": 1781706004210,
+      "source": "source"
+    },
+    "test-conflict.txt": {
+      "path": "test-conflict.txt",
+      "hash": "2421f6dec5c536e19ada8d57481980b4",
+      "size": 70,
+      "mtime": 1781709292585,
+      "source": "source"
+    },
     "test1.txt": {
       "path": "test1.txt",
       "hash": "e4e1677eaf3a34edffd9f7e5212443e9",

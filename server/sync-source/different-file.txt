@@ -1,0 +1,4 @@
+﻿DIFFERENT - Source only line A
+DIFFERENT - Source only line B
+COMMON - Same line 1
+COMMON - Same line 2
